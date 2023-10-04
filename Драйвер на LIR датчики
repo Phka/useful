@@ -1,0 +1,103 @@
+diff --git a/chardev.c b/chardev.c
+index 47f4555..10d5baa 100644
+--- a/chardev.c
++++ b/chardev.c
+@@ -174,9 +174,12 @@ static ssize_t lirdev_read(struct file *file, char __user *buf, size_t count, lo
+ 	struct lir_device_private* drv = file->private_data;
+ 	uint32_t data;
+ 
++	printk(KERN_DEBUG "Request for channel data\n");
++
+ 	data = get_channel_data(drv->drv, drv->chnum);
+ 
+ 	if (copy_to_user(buf, &data, count)) {
++		printk(KERN_ERR "Unable to copy data to user\n");
+ 		return -EFAULT;
+ 	}
+ 
+diff --git a/lir941r_hw.c b/lir941r_hw.c
+index 20dd170..caa011f 100644
+--- a/lir941r_hw.c
++++ b/lir941r_hw.c
+@@ -19,6 +19,7 @@
+ 
+ #include <linux/pci.h>
+ #include "lir941r_hw.h"
++#include "log.h"
+ 
+ /*
+  * define bit nums in channel control/status register
+@@ -95,17 +96,25 @@ static void wait_for_transaction_finish(struct lir941r_driver* drv, uint8_t chnu
+ {
+ 	void* r_addr;
+ 	uint8_t reg;
++	uint8_t count = 0;
+ 
+ 	r_addr = drv->hwmem + CHANNEL_RG_ST_OFFSET(chnum);
+ 
+ 	while (1) {
++		if (count >= 128) {
++			printk(KERN_CRIT "No response from hardware for transaction_finish\n");
++			break;
++		}
++
+ 		reg = ioread8(r_addr);
+ 
+ 		if (!CHECK_BIT(reg, CHREG_STATUS_TR_ACTIVE_BIT)) {
+ 			break;
+-		} else {
+-			printk("Waiting for transaction finish...\n");
+ 		}
++
++		printk(KERN_WARNING "Waiting for transaction finish...\n");
++
++		count++;		
+ 	}
+ }
+ 
+@@ -113,17 +122,25 @@ static void wait_for_pause_in_tx(struct lir941r_driver* drv, uint8_t chnum)
+ {
+ 	void* r_addr;
+ 	uint8_t reg;
++	uint8_t count = 0;
+ 
+ 	r_addr = drv->hwmem + CHANNEL_RG_ST_OFFSET(chnum);
+ 
+ 	while(1) {
++		if (count >= 128) {
++			printk(KERN_CRIT "No response from hardware for transaction_pause\n");
++			break;
++		}
++
+ 		reg = ioread8(r_addr);
+ 
+ 		if (!CHECK_BIT(reg, CHREG_STATUS_TR_PAUSE_BIT)) {
+ 			break;
+-		} else {
+-			printk("Waiting for transaction pause...\n");
+ 		}
++
++		printk(KERN_WARNING "Waiting for transaction pause...\n");
++
++		count++;
+ 	}
+ 
+ }
+@@ -170,7 +187,7 @@ static void change_channel_polling_mode(struct lir941r_driver* drv, uint8_t chnu
+ 		SET_BIT(reg, CHREG_POLLING_BIT);
+ 	}
+ 
+-	printk("config reg value: 0x%X\n", reg);
++	printk(KERN_DEBUG "Config reg value: 0x%X\n", reg);
+ 
+ 	iowrite8(reg, w_addr);
+ }
+@@ -222,7 +239,7 @@ uint32_t get_channel_data(struct lir941r_driver* drv, uint8_t chnum)
+ 
+ 	res = ioread32(read_addr);
+ 
+-	printk("raw data from reg: 0x%X\n", res);
++	printk(KERN_DEBUG "Raw data from reg: 0x%X\n", res);
+ 
+ 	return res;
+ }
