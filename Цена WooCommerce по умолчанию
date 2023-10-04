@@ -1,0 +1,20 @@
+
+/**
+ * Sets the product default price to 10. Only works once, if the price is not specified.
+ *
+ * @param int    $post_id
+ * @param object $post
+ */
+function set_product_default_price( $post_id, $post ) {
+	$product     = wc_get_product( $post_id );
+	$already_set = get_post_meta( $post_id, '_set_default_price', true );
+	$price       = $product->get_price();
+
+	if ( 'yes' !== $already_set && empty( $price ) ) {
+		$product->set_regular_price( ‘0’ );
+		$product->save();
+
+		update_post_meta( $post_id, '_set_default_price', 'yes' );
+	}
+}
+add_action( 'woocommerce_process_product_meta', 'set_product_default_price', 999, 2 );
