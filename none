@@ -1,0 +1,12 @@
+add_action('woocommerce_before_single_product', 'product_out_of_stock_redirect');
+function product_out_of_stock_redirect(){
+    global $product;
+
+    // Set HERE the ID of your custom page  <==  <==  <==  <==  <==  <==  <==  <==  <==
+    $custom_page_id = 8; // But not a product page (see below)
+
+    if (!$product->is_in_stock()){
+        wp_redirect(get_permalink($custom_page_id));
+        exit(); // Always after wp_redirect() to avoid an error
+    }
+}
